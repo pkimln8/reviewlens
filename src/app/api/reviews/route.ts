@@ -1,27 +1,28 @@
+
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
 import { REVIEW_SYSTEM_PROMPT } from "@/lib/review-prompt";
+import type {
+  Finding,
+  FindingCategory,
+  ReviewResult,
+  Severity,
+} from "@/types/review";
 
-const ALLOWED_SEVERITIES = [
+const ALLOWED_SEVERITIES: readonly Severity[] = [
   "critical",
   "high",
   "medium",
   "low",
-] as const;
+];
 
-type ReviewFinding = {
-  severity: (typeof ALLOWED_SEVERITIES)[number];
-  filePath: string;
-  line: number | null;
-  title: string;
-  description: string;
-  suggestion: string;
-};
-
-type ReviewResult = {
-  summary: string;
-  findings: ReviewFinding[];
-};
+const ALLOWED_CATEGORIES: readonly FindingCategory[] = [
+  "bug",
+  "edge_case",
+  "security",
+  "performance",
+  "missing_test",
+];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return (
@@ -31,38 +32,56 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   );
 }
 
-function isReviewResult(value: unknown): value is ReviewResult {
-  if (
-    !isRecord(value) ||
-    typeof value.summary !== "string" ||
-    !Array.isArray(value.findings)
-  ) {
+function isSeverity(value: unknown): value is Severity {
+  return (
+    typeof value === "string" &&
+    ALLOWED_SEVERITIES.includes(value as Severity)
+  );
+}
+
+function isFindingCategory(value: unknown): value is FindingCategory {
+  return (
+    typeof value === "string" &&
+    ALLOWED_CATEGORIES.includes(value as FindingCategory)
+  );
+}
+
+function isFinding(value: unknown): value is Finding {
+  if (!isRecord(value)) {
     return false;
   }
 
-  return value.findings.every((finding: unknown) => {
-    if (!isRecord(finding)) {
-      return false;
-    }
+  return (
+    typeof value.title === "string" &&
+    value.title.trim().length > 0 &&
+    isSeverity(value.severity) &&
+    isFindingCategory(value.category) &&
+    typeof value.filePath === "string" &&
+    value.filePath.trim().length > 0 &&
+    (value.lineNumber === null ||
+      (typeof value.lineNumber === "number" &&
+        Number.isInteger(value.lineNumber) &&
+        value.lineNumber >= 1)) &&
+    typeof value.description === "string" &&
+    value.description.trim().length > 0 &&
+    typeof value.evidence === "string" &&
+    value.evidence.trim().length > 0 &&
+    typeof value.suggestion === "string" &&
+    value.suggestion.trim().length > 0 &&
+    typeof value.confidence === "number" &&
+    Number.isFinite(value.confidence) &&
+    value.confidence >= 0 &&
+    value.confidence <= 1
+  );
+}
 
-    return (
-      typeof finding.severity === "string" &&
-      ALLOWED_SEVERITIES.includes(
-        finding.severity as (typeof ALLOWED_SEVERITIES)[number],
-      ) &&
-      typeof finding.filePath === "string" &&
-      (finding.line === null ||
-        (typeof finding.line === "number" &&
-          Number.isInteger(finding.line) &&
-          finding.line >= 1)) &&
-      typeof finding.title === "string" &&
-      finding.title.trim().length > 0 &&
-      typeof finding.description === "string" &&
-      finding.description.trim().length > 0 &&
-      typeof finding.suggestion === "string" &&
-      finding.suggestion.trim().length > 0
-    );
-  });
+function isReviewResult(value: unknown): value is ReviewResult {
+  return (
+    isRecord(value) &&
+    typeof value.summary === "string" &&
+    Array.isArray(value.findings) &&
+    value.findings.every(isFinding)
+  );
 }
 
 const openai = new OpenAI({
@@ -107,7 +126,7 @@ export async function POST(request: Request) {
     const response = await openai.chat.completions.create({
       model: process.env.OPENAI_MODEL || "qwen2.5-coder:7b",
       temperature: 0,
-      max_tokens: 1200,
+      max_tokens: 1600,
       messages: [
         {
           role: "system",

@@ -1,3 +1,4 @@
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "../../../../../app/api/reviews/route";
 
@@ -41,12 +42,15 @@ function mockModelReview(review: unknown) {
 
 function validFinding(overrides: Record<string, unknown> = {}) {
   return {
-    severity: "high",
-    filePath: "src/example.ts",
-    line: 1,
     title: "Potential bug",
+    severity: "high",
+    category: "bug",
+    filePath: "src/example.ts",
+    lineNumber: 1,
     description: "This code may fail at runtime.",
+    evidence: "The code accesses a value without checking whether it exists.",
     suggestion: "Add appropriate validation.",
+    confidence: 0.95,
     ...overrides,
   };
 }
@@ -164,10 +168,62 @@ describe("POST /api/reviews", () => {
     expect(response.status).toBe(502);
   });
 
+  it("returns 502 when the model returns an invalid category", async () => {
+    mockModelReview({
+      summary: "Potential issue found.",
+      findings: [validFinding({ category: "style" })],
+    });
+
+    const response = await POST(
+      createRequest(JSON.stringify({ diff: "const result = 1;" })),
+    );
+
+    expect(response.status).toBe(502);
+  });
+
   it("returns 502 when a finding has an invalid line number", async () => {
     mockModelReview({
       summary: "Potential issue found.",
-      findings: [validFinding({ line: 0 })],
+      findings: [validFinding({ lineNumber: 0 })],
+    });
+
+    const response = await POST(
+      createRequest(JSON.stringify({ diff: "const result = 1;" })),
+    );
+
+    expect(response.status).toBe(502);
+  });
+
+  it("accepts a finding with an unknown line number", async () => {
+    mockModelReview({
+      summary: "Potential issue found.",
+      findings: [validFinding({ lineNumber: null })],
+    });
+
+    const response = await POST(
+      createRequest(JSON.stringify({ diff: "const result = 1;" })),
+    );
+
+    expect(response.status).toBe(200);
+  });
+
+  it("returns 502 when confidence is outside the allowed range", async () => {
+    mockModelReview({
+      summary: "Potential issue found.",
+      findings: [validFinding({ confidence: 1.5 })],
+    });
+
+    const response = await POST(
+      createRequest(JSON.stringify({ diff: "const result = 1;" })),
+    );
+
+    expect(response.status).toBe(502);
+  });
+
+  it("returns 502 when confidence is not a number", async () => {
+    mockModelReview({
+      summary: "Potential issue found.",
+      findings: [validFinding({ confidence: "high" })],
     });
 
     const response = await POST(
@@ -182,10 +238,14 @@ describe("POST /api/reviews", () => {
       summary: "Potential issue found.",
       findings: [
         {
+          title: "Missing evidence",
           severity: "high",
+          category: "bug",
           filePath: "src/example.ts",
-          line: 1,
-          title: "Missing description",
+          lineNumber: 1,
+          description: "This code may fail.",
+          suggestion: "Add validation.",
+          confidence: 0.9,
         },
       ],
     });
