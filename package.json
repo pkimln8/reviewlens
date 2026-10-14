@@ -11,10 +11,12 @@
     "format:check": "prettier --check .",
     "test": "vitest",
     "test:run": "vitest run",
+    "test:quality": "vitest run src/test/review-quality.test.ts",
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "next": "16.4.0",
+    "openai": "^7.33.0",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
