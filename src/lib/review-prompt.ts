@@ -1,4 +1,3 @@
-
 export const REVIEW_SYSTEM_PROMPT = `
 You are ReviewLens, a code reviewer focused on finding concrete bugs and security vulnerabilities introduced by a git diff.
 

@@ -1,4 +1,3 @@
-
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
 import { REVIEW_SYSTEM_PROMPT } from "@/lib/review-prompt";
@@ -25,17 +24,12 @@ const ALLOWED_CATEGORIES: readonly FindingCategory[] = [
 ];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    !Array.isArray(value)
-  );
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function isSeverity(value: unknown): value is Severity {
   return (
-    typeof value === "string" &&
-    ALLOWED_SEVERITIES.includes(value as Severity)
+    typeof value === "string" && ALLOWED_SEVERITIES.includes(value as Severity)
   );
 }
 
@@ -86,8 +80,7 @@ function isReviewResult(value: unknown): value is ReviewResult {
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || "ollama",
-  baseURL:
-    process.env.OPENAI_BASE_URL || "https://api.openai.com/v1",
+  baseURL: process.env.OPENAI_BASE_URL || "https://api.openai.com/v1",
 });
 
 export async function POST(request: Request) {
@@ -116,10 +109,7 @@ export async function POST(request: Request) {
   const diff = body.diff;
 
   if (diff.length > 30_000) {
-    return NextResponse.json(
-      { error: "Diff is too large" },
-      { status: 413 },
-    );
+    return NextResponse.json({ error: "Diff is too large" }, { status: 413 });
   }
 
   try {

@@ -1,4 +1,3 @@
-
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "../../../../../app/api/reviews/route";
 
@@ -100,18 +99,14 @@ describe("POST /api/reviews", () => {
   });
 
   it("returns 400 when diff is empty", async () => {
-    const response = await POST(
-      createRequest(JSON.stringify({ diff: "   " })),
-    );
+    const response = await POST(createRequest(JSON.stringify({ diff: "   " })));
 
     expect(response.status).toBe(400);
     expect(create).not.toHaveBeenCalled();
   });
 
   it("returns 400 when diff is not a string", async () => {
-    const response = await POST(
-      createRequest(JSON.stringify({ diff: 123 })),
-    );
+    const response = await POST(createRequest(JSON.stringify({ diff: 123 })));
 
     expect(response.status).toBe(400);
     expect(create).not.toHaveBeenCalled();
